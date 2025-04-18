@@ -1,7 +1,7 @@
 DJI RC-N1(or N3) as GamePad
 ===============
 
-This is a program that connects to your DJI Drone Remote Controller (RC-N1 or N3) as a normal win gamepad for PC games,
+This is a program that connects to your DJI Drone Remote Controller (RC-N1 or N3) as a normal win Keyboard and mouse for PC games,
 reads the stick positions and tells Windows that position.
 
 <img height="400" src="DJI-RC-N1-Remote-Controller.png" width="400"/>
