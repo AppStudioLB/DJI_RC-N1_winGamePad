@@ -29,6 +29,8 @@ pip3 install pydirectinput
 ## Notice
 - Only tested for Minecraft. For the other games you should change the variables.
 - Change raw input setting. It is in the mouse control settings in Minecraft.
+- Left Joystick = Keyboard
+- Right Joystick =  Mouse
 
 ## Citations
 - https://github.com/IvanYaky/DJI_RC-N1_SIMULATOR_FLY_DCL
