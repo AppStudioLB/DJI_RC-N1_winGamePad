@@ -5,17 +5,14 @@ from threading import Thread
 
 import serial
 import serial.tools.list_ports
-import pydirectinput  # PyDirectInput 사용
+import pydirectinput  # PyDirectInput 
 
-# PyDirectInput의 기본 PAUSE 제거 (내장 지연 0)
 pydirectinput.PAUSE = 0
 
-# 인자 파서 설정
 parser = argparse.ArgumentParser(description='DJI Mavic 3 RC231, RC-N1)')
 parser.add_argument('-p', '--port', help='RC Serial Port', default="COM9")
 args = parser.parse_args()
 
-# DJI RC의 시리얼 포트 탐색 및 열기
 try:
     s = None
     ports = serial.tools.list_ports.comports(True)
@@ -32,7 +29,7 @@ try:
         except (OSError, serial.SerialException):
             pass
     if s is None:
-        print("DJI RC 시리얼 포트를 찾지 못했습니다.")
+        print("DJI RC No serial port found.")
         exit(1)
 except serial.SerialException as e:
     print('Could not open serial port:', e)
@@ -41,14 +38,7 @@ except serial.SerialException as e:
 print('app version: 3.0.0\n')
 print('\nDJI RC231 emulation started...\n')
 print('\nClose terminal to stop\n')
-print('*******************************************************')
-print('* Telegram: https://t.me/DJI_RC_N1_SIMULATOR_FLY_DC   *')
-print('* Donate: https://www.buymeacoffee.com/ivanyakymenko  *')
-print('*******************************************************\n')
 
-# ------------------------------------------------------------------
-# 체크섬 계산 함수들 (원본 코드 내용)
-# ------------------------------------------------------------------
 def calc_checksum(packet, plength):
     crc = [
         0x0000, 0x1189, 0x2312, 0x329b, 0x4624, 0x57ad, 0x6536, 0x74bf,
@@ -156,33 +146,26 @@ def send_duml(s, source, target, cmd_type, cmd_set, cmd_id, payload=None):
     s.write(packet)
     sequence_number += 1
 
-# ------------------------------------------------------------------
-# 조종간 입력값 변환 함수
-# (입력 범위: min 364, center 1024, max 1684) → (출력 범위: min -32768, center 0, max 32767)
-# ------------------------------------------------------------------
 def parseInput(input_bytes, name):
     output = (int.from_bytes(input_bytes, byteorder='little') - 1024) * 2 * 4096 // 165
     if output >= 32768:
         output = 32767
     return output
 
-# 전역 변수: 조종간 좌표값 저장 (오른쪽: "rh", "rv", 왼쪽: "lh", "lv")
 st = {"rh": 0, "rv": 0, "lh": 0, "lv": 0}
 
 # ------------------------------------------------------------------
-# PyDirectInput을 이용한 입력 업데이트 스레드
-# - 왼쪽 조종간: 지속적 keyDown/Up 방식 (키가 눌려있으면 키를 유지하고, 중앙 근처면 해제)
-# - 오른쪽 조종간: 20ms 간격으로 부드러운 마우스 상대 이동
+# Input update thread using PyDirectInput
 # ------------------------------------------------------------------
 def input_update_thread():
     deadzone_keyboard = 5000
     deadzone_mouse = 10000
     mouse_sensitivity = 0.000043  # 필요에 따라 조절
-    # 키보드 상태 추적 (현재 눌린 상태)
+
     pressed_keys = {'w': False, 'a': False, 's': False, 'd': False}
     
     while True:
-        # 수직 방향 (위: 'w', 아래: 's')
+
         if st["lv"] > deadzone_keyboard:
             if not pressed_keys['w']:
                 pydirectinput.keyDown('w')
@@ -201,7 +184,6 @@ def input_update_thread():
                 pydirectinput.keyUp('s')
                 pressed_keys['s'] = False
 
-        # 수평 방향 (오른쪽: 'd', 왼쪽: 'a')
         if st["lh"] > deadzone_keyboard:
             if not pressed_keys['d']:
                 pydirectinput.keyDown('d')
@@ -220,7 +202,6 @@ def input_update_thread():
                 pydirectinput.keyUp('a')
                 pressed_keys['a'] = False
 
-        # 마우스 상대 이동 계산 (20ms 간격)
         move_x = 0
         move_y = 0
         if abs(st["rh"]) > deadzone_mouse:
@@ -230,26 +211,21 @@ def input_update_thread():
         if move_x != 0 or move_y != 0:
             pydirectinput.moveRel(move_x, move_y)
         
-        # 디버깅 출력 (원한다면 주석 처리 가능)
         print(f"[Input Thread] Parsed - RH: {st['rh']}, RV: {st['rv']}, LH: {st['lh']}, LV: {st['lv']}")
         time.sleep(0.001)
 
-# 스레드 시작
 thread = Thread(target=input_update_thread, args=())
 thread.daemon = True
 thread.start()
 
-# ------------------------------------------------------------------
-# 메인 루프: 시리얼 데이터 수신 및 조종간 값 파싱
-# ------------------------------------------------------------------
 try:
-    # RC 시뮬레이터 모드 활성화
+ 
     send_duml(s, 0x0a, 0x06, 0x40, 0x06, 0x24, bytearray.fromhex('01'))
     
     while True:
-        # 조종간 입력 요청
+
         send_duml(s, 0x0a, 0x06, 0x40, 0x06, 0x01, bytearray.fromhex(''))
-        # 패킷 수신
+
         buffer = bytearray()
         while True:
             b = s.read(1)
@@ -258,8 +234,8 @@ try:
                 ph = s.read(2)
                 buffer.extend(ph)
                 ph_val = struct.unpack('<H', ph)[0]
-                pl = ph_val & 0x03FF  # 패킷 길이
-                h_crc = s.read(1)     # 헤더 체크섬 읽기
+                pl = ph_val & 0x03FF  
+                h_crc = s.read(1)    
                 buffer.extend(h_crc)
                 pd = s.read(pl - 4)
                 buffer.extend(pd)
